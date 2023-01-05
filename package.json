@@ -1,0 +1,28 @@
+{
+  "name": "abracadabra-scripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha 'test/**/*.spec.ts' --require ts-node/register --recursive --timeout 60000 --exit"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.2.1",
+    "bignumber.js": "^9.1.1",
+    "chai": "^4.3.7",
+    "ethers": "^5.7.2",
+    "mocha": "^10.2.0",
+    "nock": "^13.2.9",
+    "sinon": "^15.0.1",
+    "underscore": "^1.13.6"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.2.4",
+    "@types/mocha": "^10.0.1",
+    "@types/sinon": "^10.0.13",
+    "@types/underscore": "^1.11.4",
+    "ts-node": "^10.9.1"
+  }
+}
