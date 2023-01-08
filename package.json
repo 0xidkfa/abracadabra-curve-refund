@@ -14,11 +14,13 @@
     "chai": "^4.3.7",
     "ethers": "^5.7.2",
     "mocha": "^10.2.0",
+    "moment-timezone": "^0.5.40",
     "nock": "^13.2.9",
     "sinon": "^15.0.1",
     "underscore": "^1.13.6"
   },
   "devDependencies": {
+    "@types/chai": "^4.3.4",
     "@types/jest": "^29.2.4",
     "@types/mocha": "^10.0.1",
     "@types/sinon": "^10.0.13",
