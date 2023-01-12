@@ -50,6 +50,7 @@ export async function findClosestBlock(time: number) {
     }
   }
 
+  console.log(time, upperBound);
   // Return the block number of the closest block after the target time
   return upperBound;
 }

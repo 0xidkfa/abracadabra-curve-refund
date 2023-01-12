@@ -6,6 +6,7 @@ import yBribeAbi from './abis/yBribe.json';
 import gaugeControllerAbi from './abis/gaugeController.json';
 import gaugeDepositAbi from './abis/gaugeDeposit.json';
 import veCrvAbi from './abis/veCrv.json';
+import spellOracleAbi from './abis/oracle.json';
 import * as utils from './utils';
 import moment = require('moment-timezone');
 
@@ -15,6 +16,7 @@ const YBRIBE_V2_ADDR = '0x7893bbb46613d7a4FbcC31Dab4C9b823FfeE1026';
 const YBRIBE_V3_ADDR = '0x03dFdBcD4056E2F92251c7B07423E1a33a7D3F6d';
 const CURVE_MIM_GAUGE_ADDR = '0xd8b712d29381748db89c36bca0138d7c75866ddf';
 const CURVE_GAUGE_CONTROLLER_ADDR = '0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB';
+const SPELL_ORACLE_ADDR = '0x75e14253dE6a5c2af12d5f1a1EA0A2E11e69EC10';
 const VE_CRV_ADDR = '0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2';
 const MAX_REFUND_RATE = 700; // 18% - 11%
 const WEEKS_IN_YEAR = 52;
@@ -40,31 +42,36 @@ export class RefundCalculator {
   veCrvContract: ethers.Contract;
   gaugeDepositContract: ethers.Contract;
   yBribeContract: ethers.Contract;
+  spellOracleContract: ethers.Contract;
 
   constructor(borrowAddr: string, votingAddr: string, blockNumber?: number) {
     this.blockNumber = blockNumber || 'latest';
     this.borrowAddr = borrowAddr;
     this.votingAddr = votingAddr;
 
-    this.provider = new ethers.providers.AlchemyProvider('mainnet', '5GbPhhJvIkJhTU3Yo3d2ltnU0B9UX4nG');
+    // this.provider = new ethers.providers.AlchemyProvider('mainnet', '5GbPhhJvIkJhTU3Yo3d2ltnU0B9UX4nG');
+    this.provider = new ethers.providers.JsonRpcProvider(
+      'https://rpc.tenderly.co/fork/a66c1c98-5eef-4381-8c3f-25a5fa306393'
+    );
     this.cauldronContract = new ethers.Contract(MIM_CAULDRON_ADDR, cauldronAbi, this.provider);
     this.gaugeDepositContract = new ethers.Contract(CURVE_MIM_GAUGE_ADDR, gaugeDepositAbi, this.provider);
     this.gaugeControllerContract = new ethers.Contract(CURVE_GAUGE_CONTROLLER_ADDR, gaugeControllerAbi, this.provider);
     this.veCrvContract = new ethers.Contract(VE_CRV_ADDR, veCrvAbi, this.provider);
     this.yBribeContract = new ethers.Contract(YBRIBE_V3_ADDR, yBribeAbi, this.provider);
+    this.spellOracleContract = new ethers.Contract(SPELL_ORACLE_ADDR, spellOracleAbi, this.provider);
   }
 
   // Get final refund amount, in dollars, based on spellPrice. spellPrice has 8 decimals (e.g., $0.00010000 is represented as 10000).
   async getRefundAmount(spellPrice: BigNumber): Promise<BigNumber> {
     const maxWeeklyRefund = await this.maxWeeklyRefund();
     const getVoterSpellBribesDollarValue = await this.getVoterSpellBribesDollarValue(spellPrice);
-    return maxWeeklyRefund.gt(0) ? maxWeeklyRefund : getVoterSpellBribesDollarValue;
+    return maxWeeklyRefund.gt(getVoterSpellBribesDollarValue) ? getVoterSpellBribesDollarValue : maxWeeklyRefund;
   }
 
   // Get SPELL amount to be sent back to Abracadabra treasury.
   async spellToBeReturned(spellPrice: BigNumber): Promise<BigNumber> {
     let refundAmount = await this.getRefundAmount(spellPrice);
-    return refundAmount.mul(bnDecimals(8)).div(spellPrice);
+    return refundAmount.mul(bnDecimals(18)).div(spellPrice);
   }
 
   // Get total borrow on CRV cauldron.
@@ -128,7 +135,7 @@ export class RefundCalculator {
   // Calculate the dollar value of SPELL bribes a voter will receive for that week.
   async getVoterSpellBribesDollarValue(spellPrice: BigNumber): Promise<BigNumber> {
     const voterSpellBribes = await this.getVoterSpellBribes();
-    return voterSpellBribes.mul(spellPrice).div(bnDecimals(8));
+    return voterSpellBribes.mul(spellPrice).div(bnDecimals(18));
   }
 
   async getWeeklySpellBribes(): Promise<BigNumber> {
@@ -143,16 +150,27 @@ export class RefundCalculator {
   async claimsPerGauge() {
     return await this.yBribeContract.claims_per_gauge(CURVE_MIM_GAUGE_ADDR, SPELL_ADDR, { blockTag: this.blockNumber });
   }
+
+  async getSpellPrice() {
+    // Need to do 1 / price * 10^18 to get dollar value
+    let spot = await this.spellOracleContract.peekSpot('0x00', { blockTag: this.blockNumber });
+    return bnDecimals(36).div(spot);
+  }
 }
 
 async function main() {
+  let date = utils.findThursdayAfter('2023-01-11');
+  let blockNumber = await utils.findClosestBlock(date.getTime() / 1000);
+
   let calc = new RefundCalculator(
     '0x7a16ff8270133f063aab6c9977183d9e72835428',
     '0x9B44473E223f8a3c047AD86f387B80402536B029',
-    16286697
+    blockNumber
   );
 
-  const spellPrice = BigNumber.from(53604); // $0.00053604
+  const spellPrice = await calc.getSpellPrice();
+  console.log('As of: ', moment.utc(date.getTime()).toISOString());
+  console.log('SPELL price ($):', formatBn(spellPrice, 18, 6));
   console.log('Borrow amount ($):', formatBn(await calc.getBorrowAmount(), 18, 2));
   console.log('Total veCRV voted (veCRV): ', formatBn(await calc.getVoterMimGaugeVotes(), 18, 2));
   console.log('Total bribes received ($): ', formatBn(await calc.getVoterSpellBribesDollarValue(spellPrice), 18, 2));
