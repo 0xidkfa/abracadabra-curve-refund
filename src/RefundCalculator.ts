@@ -49,10 +49,10 @@ export class RefundCalculator {
     this.borrowAddr = borrowAddr;
     this.votingAddr = votingAddr;
 
-    // this.provider = new ethers.providers.AlchemyProvider('mainnet', '5GbPhhJvIkJhTU3Yo3d2ltnU0B9UX4nG');
-    this.provider = new ethers.providers.JsonRpcProvider(
-      'https://rpc.tenderly.co/fork/a66c1c98-5eef-4381-8c3f-25a5fa306393'
-    );
+    this.provider = new ethers.providers.AlchemyProvider('mainnet', '5GbPhhJvIkJhTU3Yo3d2ltnU0B9UX4nG');
+    // this.provider = new ethers.providers.JsonRpcProvider(
+    //   'https://rpc.tenderly.co/fork/a66c1c98-5eef-4381-8c3f-25a5fa306393'
+    // );
     this.cauldronContract = new ethers.Contract(MIM_CAULDRON_ADDR, cauldronAbi, this.provider);
     this.gaugeDepositContract = new ethers.Contract(CURVE_MIM_GAUGE_ADDR, gaugeDepositAbi, this.provider);
     this.gaugeControllerContract = new ethers.Contract(CURVE_GAUGE_CONTROLLER_ADDR, gaugeControllerAbi, this.provider);
@@ -159,8 +159,9 @@ export class RefundCalculator {
 }
 
 async function main() {
-  let date = utils.findThursdayAfter('2023-01-11');
-  let blockNumber = await utils.findClosestBlock(date.getTime() / 1000);
+  let date = utils.findThursdayAfter('2023-01-18');
+  // let blockNumber = await utils.findClosestBlock(date.getTime() / 1000);
+  let blockNumber = 16437130;
 
   let calc = new RefundCalculator(
     '0x7a16ff8270133f063aab6c9977183d9e72835428',
@@ -168,8 +169,8 @@ async function main() {
     blockNumber
   );
 
-  const spellPrice = await calc.getSpellPrice();
   console.log('As of: ', moment.utc(date.getTime()).toISOString());
+  const spellPrice = await calc.getSpellPrice();
   console.log('SPELL price ($):', formatBn(spellPrice, 18, 6));
   console.log('Borrow amount ($):', formatBn(await calc.getBorrowAmount(), 18, 2));
   console.log('Total veCRV voted (veCRV): ', formatBn(await calc.getVoterMimGaugeVotes(), 18, 2));
