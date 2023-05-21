@@ -13,7 +13,8 @@ export function findThursdayAfter(inputDate: string) {
 
 export async function findClosestBlock(time: number) {
   // Set up provider to connect to an Ethereum node
-  const provider = new providers.JsonRpcProvider('https://eth.llamarpc.com');
+  const provider = new providers.AlchemyProvider('mainnet', '5GbPhhJvIkJhTU3Yo3d2ltnU0B9UX4nG');
+  // const provider = new providers.JsonRpcProvider('https://eth.llamarpc.com');
 
   // Get the current block number
   const currentBlockNumber = await provider.getBlockNumber();
@@ -50,7 +51,7 @@ export async function findClosestBlock(time: number) {
     }
   }
 
-  console.log(time, upperBound);
+  // console.log(time, upperBound);
   // Return the block number of the closest block after the target time
   return upperBound;
 }
